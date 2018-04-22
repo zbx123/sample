@@ -9,6 +9,16 @@ use App\Models\User;
 
 class UsersController extends Controller
 {
+   public function __construct()
+   {
+    $this->middleware('auth',[
+        'except'=>['show','create','store','index']
+    ]);
+    $this->middleware('guest',[
+        'only'=>['create']
+    ]);
+   }
+
     public function create()
     {
     	return view('users.create');
@@ -32,5 +42,45 @@ class UsersController extends Controller
         Auth::login($user);
     	session()->flash('success','欢迎,您将在这里开启新的旅程~');
     	return redirect()->route('users.show',[$user]);
+    }
+    
+    public function edit(User $user)
+    {
+        $this->authorize('update',$user);//用于登陆用户只能修改自己的资料
+        //return view('users.edit',compact($user));
+        return view('users.edit',compact('user'));
+    }
+    public function update(User $user,Request $request)
+    {
+        $this->validate($request,[
+            'name'=>'required|max:50',
+            'password'=>'required|confirmed|min:6'
+        ]);
+       /* $user->update([
+            'name'=>$request->name,
+            'password'=>bcrypt($request->password),
+        ]);
+        return redirect()->route('users.show',$user->id);*/
+        $this->authorize('update',$user);
+        $data = [];
+        $data['name'] = $request->name;
+        if($request->password){
+            $data['password'] =bcrypt($request->password);
+        }
+        $user->update($data);
+        session()->flash('success','修改个人资料成功!');
+        return redirect()->route('users.show',$user->id);
+    }
+    public function index()
+    {
+        //$users = User::all();
+        $users = User::paginate(10);
+        return view('users.index',compact('users'));
+    }
+    public function destroy(User $user)
+    {
+        $user->delete();
+        session()->flash('success','删除用户成功');
+        return back();
     }
 }
